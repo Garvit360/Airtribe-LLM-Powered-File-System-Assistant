@@ -2,7 +2,7 @@
 
 ## Project brief
 
-A small system that combines **file-system tools** (read, list, write, search) with an **LLM assistant** that can call those tools from natural-language prompts. Use it to list directories, read PDF/TXT/DOCX files, search for keywords, and write files via conversational queries (e.g. “List files in sample_files and summarize notes.txt”).
+A small system that combines **file-system tools** (read, list, write, search, find path by name) with an **LLM assistant** that calls those tools from natural-language prompts. Use it to list directories, read PDF/TXT/DOCX files, search for keywords, write files, and resolve where a file or folder lives by its case-sensitive name (e.g. “List files in sample_files”, “Where is notes.txt?”).
 
 ---
 
@@ -15,26 +15,28 @@ A small system that combines **file-system tools** (read, list, write, search) w
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  llm_file_assistant.py                                           │
-│  • OpenAI client (gpt-5.1)                                   │
-│  • Tool definitions (read_file, list_files, write_file,           │
-│    search_in_file) in OpenAI function-calling format             │
-│  • Loop: chat completion → if tool_calls → run_tool() →          │
+│  • OpenAI client (gpt-5.1)                                    │
+│  • Tools: read_file, list_files, write_file, search_in_file,      │
+│    get_path_by_name (OpenAI function-calling format)              │
+│  • Loop: chat completion → if tool_calls → run_tool() →           │
 │    append results → repeat until model returns text              │
-│  • Paths resolved relative to project root (PROJECT_ROOT)        │
+│  • Paths resolved relative to PROJECT_ROOT; leading project-name │
+│    segment stripped to avoid double-nesting                      │
 └────────────────────────────┬────────────────────────────────────┘
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  fs_tools.py                                                     │
-│  • read_file(filepath)   → dict (content, filename, size, error)  │
-│  • list_files(dir, ext?) → list of {name, size, modified}       │
-│  • write_file(filepath, content) → dict (success, path, error)   │
-│  • search_in_file(filepath, keyword) → dict (matches, keyword)   │
-│  Supported: PDF (pypdf), DOCX (python-docx), TXT                 │
+│  • read_file(filepath)     → dict (content, filename, size, err) │
+│  • list_files(dir, ext?)   → list of {name, size, modified}       │
+│  • write_file(path, content) → dict (success, path, error)        │
+│  • search_in_file(path, keyword) → dict (matches, keyword)        │
+│  • get_path_by_name(root_dir, name) → dict (paths[], name)       │
+│  Supported: PDF (pypdf), DOCX (python-docx), TXT                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-- **fs_tools**: Pure file I/O. Paths may use `~`; it is expanded. No LLM dependency.
-- **llm_file_assistant**: Loads `.env` for `OPENAI_API_KEY`, defines tools, runs the chat loop, and executes tools via `fs_tools`. File paths in prompts are resolved against the directory containing `llm_file_assistant.py`.
+- **fs_tools**: Pure file I/O. Paths may use `~`; it is expanded. `get_path_by_name(root_dir, name)` finds files/dirs by exact case-sensitive name under a root. No LLM dependency.
+- **llm_file_assistant**: Loads `.env` for `OPENAI_API_KEY`, defines tools, runs the chat loop, and executes tools via `fs_tools`. Paths are resolved against PROJECT_ROOT; relative paths that start with the project folder name are normalized so e.g. `LLM-Powered-File-System/sample_files` resolves to the project’s `sample_files`.
 
 ---
 
@@ -66,7 +68,7 @@ A small system that combines **file-system tools** (read, list, write, search) w
    python llm_file_assistant.py --chat
    ```
 
-   Interactive multi-turn chat: type prompts (e.g. “List files in sample_files”, “Read sample_files/notes.txt”), see responses in panels. Type `exit` or `quit` to end.
+   Interactive multi-turn chat: type prompts (e.g. “List files in sample_files”, “Read sample_files/notes.txt”). While the model thinks, you’ll see “Thinking…” and which tools are being called (e.g. “Calling: get_path_by_name, list_files”). Responses appear in panels. Type `exit` or `quit` to end.
 
    **Single prompt (no UI):**
 
