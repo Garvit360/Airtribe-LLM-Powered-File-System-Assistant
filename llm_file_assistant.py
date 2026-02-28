@@ -122,37 +122,79 @@ def run_tool(name: str, arguments: dict) -> str:
     raise ValueError(f"Unknown tool: {name}")
 
 @traceable
-def get_response(prompt: str, history: list | None = None, on_tool_calls: Callable[[list], None] | None = None) -> str:
+def get_response(
+    prompt: str,
+    history: list | None = None,
+    on_tool_calls: Callable[[list], None] | None = None,
+    stream_callback: Callable[[str], None] | None = None,
+) -> str:
     messages = (history or []) + [{"role": "user", "content": prompt}]
     while True:
-        response = client.chat.completions.create(
+        stream = client.chat.completions.create(
             model="gpt-5.1",
             messages=messages,
             tools=tools,
+            stream=True,
         )
-        msg = response.choices[0].message
-        if msg.content is not None and msg.content.strip():
-            return msg.content
-        if not msg.tool_calls:
+        content_parts = []
+        tool_calls_accum = {}
+        finish_reason = None
+
+        for chunk in stream:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta
+            finish_reason = chunk.choices[0].finish_reason
+            if delta.content:
+                content_parts.append(delta.content)
+                if stream_callback:
+                    stream_callback(delta.content)
+            if delta.tool_calls:
+                for tc in delta.tool_calls:
+                    idx = tc.index
+                    if idx not in tool_calls_accum:
+                        tool_calls_accum[idx] = {"id": "", "name": "", "arguments": ""}
+                    if tc.id:
+                        tool_calls_accum[idx]["id"] = tc.id
+                    if tc.function and tc.function.name:
+                        tool_calls_accum[idx]["name"] = tc.function.name
+                    if tc.function and tc.function.arguments:
+                        tool_calls_accum[idx]["arguments"] += tc.function.arguments
+
+        full_content = "".join(content_parts).strip() if content_parts else ""
+        if full_content and finish_reason == "stop":
+            return full_content
+        if not tool_calls_accum or finish_reason != "tool_calls":
+            if full_content:
+                return full_content
             raise RuntimeError("Model returned no content and no tool_calls")
-        tool_names = [tc.function.name for tc in msg.tool_calls]
+
+        tool_calls_list = [
+            {
+                "id": tool_calls_accum[i]["id"],
+                "type": "function",
+                "function": {"name": tool_calls_accum[i]["name"], "arguments": tool_calls_accum[i]["arguments"]},
+            }
+            for i in sorted(tool_calls_accum.keys())
+        ]
+        tool_names = [t["function"]["name"] for t in tool_calls_list]
         if on_tool_calls:
             on_tool_calls(tool_names)
         messages.append({
             "role": "assistant",
-            "content": msg.content,
+            "content": full_content or None,
             "tool_calls": [
-                {"id": tc.id, "type": "function", "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
-                for tc in msg.tool_calls
+                {"id": t["id"], "type": "function", "function": {"name": t["function"]["name"], "arguments": t["function"]["arguments"]}}
+                for t in tool_calls_list
             ],
         })
-        for tc in msg.tool_calls:
-            name = tc.function.name
-            args = json.loads(tc.function.arguments)
+        for t in tool_calls_list:
+            name = t["function"]["name"]
+            args = json.loads(t["function"]["arguments"])
             result = run_tool(name, args)
             messages.append({
                 "role": "tool",
-                "tool_call_id": tc.id,
+                "tool_call_id": t["id"],
                 "content": result,
             })
 
@@ -161,6 +203,7 @@ def run_chat_ui() -> None:
     from rich.console import Console
     from rich.panel import Panel
     from rich.markdown import Markdown
+    from rich.live import Live
 
     console = Console()
     history: list[dict] = []
@@ -175,23 +218,34 @@ def run_chat_ui() -> None:
     console.print()
 
     while True:
-        user_input = console.input("[bold cyan]You[/]: ").strip()
+        console.print("[bold cyan]You[/]: ", end="")
+        user_input = input().strip()
         if not user_input:
             continue
         if user_input.lower() in ("exit", "quit"):
             console.print("[dim]Bye.[/]")
             break
 
-        def on_tool_calls(tool_names: list) -> None:
-            console.print("[dim]  Calling: " + ", ".join(tool_names) + "[/]")
+        streamed_content: list[str] = []
 
-        with console.status("[bold green]Thinking…[/]"):
-            response = get_response(user_input, history=history, on_tool_calls=on_tool_calls)
+        def on_tool_calls(tool_names: list) -> None:
+            live.update(Panel("[dim]Calling: " + ", ".join(tool_names) + "[/]", title="Assistant", border_style="green"))
+
+        def stream_callback(chunk: str) -> None:
+            streamed_content.append(chunk)
+            live.update(Panel(Markdown("".join(streamed_content)), title="Assistant", border_style="green"))
+
+        with Live(Panel("[bold green]Thinking…[/]", title="Assistant", border_style="green"), console=console, refresh_per_second=8) as live:
+            response = get_response(
+                user_input,
+                history=history,
+                on_tool_calls=on_tool_calls,
+                stream_callback=stream_callback,
+            )
 
         history.append({"role": "user", "content": user_input})
         history.append({"role": "assistant", "content": response})
 
-        console.print(Panel(Markdown(response), title="Assistant", border_style="green"))
         console.print()
 
 
