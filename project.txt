@@ -1,0 +1,44 @@
+Brief
+Learning Objectives
+* Understand LLM function calling/tool use
+* Implement structured tool interfaces
+* Handle file I/O operations programmatically
+* Parse and validate documents
+
+
+Assignment Requirements
+
+Part A: Core File System Tools (60%)
+
+Create a Python module fs_tools.py with the following tools:
+1. read_file(filepath: str) → dict
+   * Read resume files (PDF, TXT, DOCX)
+   * Extract text content
+   * Return structured response with content and metadata
+   * Handle errors gracefully
+2. list_files(directory: str, extension: str = None) → list
+   * List all files in a directory
+   * Filter by extension (e.g., .pdf, .txt)
+   * Return file metadata (name, size, modified date)
+3. write_file(filepath: str, content: str) → dict
+   * Write content to file
+   * Create directories if needed
+   * Return success/failure status
+4. search_in_file(filepath: str, keyword: str) → dict
+   * Search for keywords in file content
+   * Return matches with context (surrounding text)
+   * Case-insensitive search
+
+Part B: LLM Integration (40%)
+
+Create llm_file_assistant.py:
+* Integrate tools with an LLM (OpenAI/Anthropic/etc.)
+* LLM should be able to call tools based on user queries
+* Example queries:
+   * “Read all resumes in the resumes folder”
+   * “Find resumes mentioning Python experience”
+   * “Create a summary file for resume_john_doe.pdf”
+
+---------------------------
+
+give me the complete understand what I have to build, what I need to read along with their resources from original docs so I can start doing on my own.
