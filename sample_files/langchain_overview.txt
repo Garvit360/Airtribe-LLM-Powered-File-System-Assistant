@@ -1,0 +1,143 @@
+================================================================================
+LANGCHAIN FRAMEWORK - TECHNICAL OVERVIEW
+================================================================================
+
+INTRODUCTION
+------------
+LangChain is an open-source framework designed to simplify the development of
+applications powered by large language models (LLMs). Created by Harrison Chase
+in 2022, it has rapidly become one of the most widely adopted frameworks in the
+AI ecosystem with over 80,000 GitHub stars.
+
+LangChain provides a standardized interface for chaining together various
+components — prompts, models, memory, tools, and agents — to build complex,
+context-aware AI applications.
+
+CORE COMPONENTS
+---------------
+1. Models
+   - LLMs: Wrappers around OpenAI GPT, Anthropic Claude, Cohere, HuggingFace
+   - Chat Models: Conversational interfaces with message formatting
+   - Embedding Models: Text-to-vector representations for semantic search
+
+2. Prompts
+   - PromptTemplate: Dynamic prompt construction with variables
+   - ChatPromptTemplate: Structured multi-role prompt management
+   - FewShotPromptTemplate: Include examples in prompts for better outputs
+
+3. Chains
+   - LLMChain: Basic prompt + model combination
+   - SequentialChain: Connect multiple chains in order
+   - RouterChain: Route inputs to different chains based on content
+   - RetrievalQA: Combine retrieval with question answering
+
+4. Memory
+   - ConversationBufferMemory: Store full chat history
+   - ConversationSummaryMemory: Summarize older messages
+   - VectorStoreRetrieverMemory: Store memories in vector DB
+
+5. Agents
+   - ReAct Agent: Reason and Act in a loop
+   - OpenAI Functions Agent: Leverage function calling
+   - Self-Ask Agent: Break questions into sub-questions
+
+6. Tools
+   - Web Search (SerpAPI, DuckDuckGo)
+   - Python REPL
+   - Wikipedia, WolframAlpha
+   - Custom tools via @tool decorator
+
+INSTALLATION
+------------
+pip install langchain langchain-openai langchain-community
+
+QUICK START EXAMPLE
+-------------------
+from langchain_openai import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from langchain.chains import LLMChain
+
+# Initialize model
+llm = ChatOpenAI(model="gpt-4", temperature=0.7)
+
+# Create prompt template
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful assistant."),
+    ("human", "{user_input}")
+])
+
+# Build chain
+chain = LLMChain(llm=llm, prompt=prompt)
+
+# Run
+response = chain.invoke({"user_input": "Explain neural networks."})
+print(response["text"])
+
+RAG PIPELINE EXAMPLE
+--------------------
+from langchain_community.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain.chains import RetrievalQA
+
+# Load documents
+loader = PyPDFLoader("document.pdf")
+docs = loader.load()
+
+# Split into chunks
+splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+chunks = splitter.split_documents(docs)
+
+# Create vector store
+embeddings = OpenAIEmbeddings()
+vectorstore = FAISS.from_documents(chunks, embeddings)
+
+# Build RAG chain
+qa_chain = RetrievalQA.from_chain_type(
+    llm=llm,
+    retriever=vectorstore.as_retriever(search_kwargs={"k": 3})
+)
+
+answer = qa_chain.invoke("What is the main topic of this document?")
+
+LCEL - LANGCHAIN EXPRESSION LANGUAGE
+-------------------------------------
+LCEL is LangChain's modern declarative syntax using the pipe (|) operator.
+
+chain = prompt | llm | output_parser
+
+Benefits:
+- Async and streaming support out of the box
+- Easy parallel execution with RunnableParallel
+- Built-in retry logic and fallbacks
+- Better observability with LangSmith
+
+LANGGRAPH
+---------
+LangGraph extends LangChain for building stateful, multi-agent workflows.
+- Define agents as nodes in a graph
+- Control flow with conditional edges
+- Persistent state across steps
+- Ideal for complex, cyclical workflows
+
+USE CASES
+---------
+- Chatbots and conversational AI
+- Document Q&A and summarization
+- Autonomous agents and task automation
+- Code generation and review assistants
+- Data extraction pipelines
+- Customer support systems
+
+ECOSYSTEM
+---------
+- LangSmith: Debugging, testing, and monitoring LLM apps
+- LangServe: Deploy chains as REST APIs
+- LangHub: Repository of prompt templates
+
+VERSION: LangChain 0.2.x (2024)
+GITHUB: https://github.com/langchain-ai/langchain
+DOCS: https://python.langchain.com/docs/
+
+================================================================================

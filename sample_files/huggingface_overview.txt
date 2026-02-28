@@ -1,0 +1,185 @@
+================================================================================
+HUGGING FACE TRANSFORMERS - TECHNICAL OVERVIEW
+================================================================================
+
+INTRODUCTION
+------------
+Hugging Face Transformers is the most widely used open-source library for
+state-of-the-art machine learning models. Built by Hugging Face and maintained
+by a large open-source community, it provides thousands of pre-trained models
+for NLP, computer vision, audio, and multimodal tasks.
+
+The library supports PyTorch, TensorFlow, and JAX as backends and has become
+the standard way to access, fine-tune, and deploy transformer-based models.
+
+THE HUB
+-------
+The Hugging Face Hub (huggingface.co) hosts:
+- 500,000+ pre-trained models
+- 100,000+ datasets
+- 150,000+ demo applications (Spaces)
+
+Popular model families on the Hub:
+- Meta: LLaMA 2, LLaMA 3, OPT
+- Mistral AI: Mistral 7B, Mixtral 8x7B
+- Google: BERT, T5, Gemma, PaLI
+- Stability AI: Stable Diffusion
+- OpenAI: Whisper (open-sourced)
+- Salesforce: BLIP, CodeT5
+
+CORE CLASSES
+------------
+1. AutoTokenizer
+   - Automatic tokenizer loading for any model
+   - Handles text encoding, padding, truncation
+   - Supports fast tokenizers via HuggingFace tokenizers library
+
+   from transformers import AutoTokenizer
+   tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+   tokens = tokenizer("Hello world", return_tensors="pt")
+
+2. AutoModel (and task-specific variants)
+   - AutoModel: Base transformer
+   - AutoModelForSequenceClassification: Text classification
+   - AutoModelForCausalLM: Text generation (GPT-style)
+   - AutoModelForSeq2SeqLM: Translation/summarization
+   - AutoModelForTokenClassification: NER, POS tagging
+   - AutoModelForQuestionAnswering: QA tasks
+
+3. Pipeline API
+   - Highest-level abstraction — one line to run inference
+   - Handles tokenization, model forward pass, post-processing
+
+   from transformers import pipeline
+   generator = pipeline("text-generation", model="gpt2")
+   result = generator("Once upon a time", max_new_tokens=50)
+
+4. Trainer
+   - Full-featured training loop with minimal boilerplate
+   - Integrates with Weights & Biases, TensorBoard
+   - Automatic distributed training
+   - Built-in evaluation and checkpointing
+
+TEXT GENERATION EXAMPLE
+------------------------
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
+
+model_name = "mistralai/Mistral-7B-v0.1"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    torch_dtype=torch.float16,
+    device_map="auto"
+)
+
+inputs = tokenizer("Tell me about AI:", return_tensors="pt").to("cuda")
+outputs = model.generate(
+    **inputs,
+    max_new_tokens=200,
+    temperature=0.7,
+    do_sample=True,
+    top_p=0.9
+)
+response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+FINE-TUNING EXAMPLE
+-------------------
+from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
+from datasets import load_dataset
+
+dataset = load_dataset("imdb")
+model = AutoModelForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=2)
+
+training_args = TrainingArguments(
+    output_dir="./results",
+    num_train_epochs=3,
+    per_device_train_batch_size=16,
+    evaluation_strategy="epoch",
+    save_strategy="epoch",
+    load_best_model_at_end=True,
+    fp16=True,
+)
+
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=dataset["train"],
+    eval_dataset=dataset["test"],
+)
+trainer.train()
+
+PEFT - PARAMETER EFFICIENT FINE-TUNING
+---------------------------------------
+Fine-tune only a small subset of parameters — crucial for large models.
+
+from peft import LoraConfig, get_peft_model, TaskType
+
+config = LoraConfig(
+    r=16,
+    lora_alpha=32,
+    target_modules=["q_proj", "v_proj"],
+    lora_dropout=0.05,
+    bias="none",
+    task_type=TaskType.CAUSAL_LM
+)
+model = get_peft_model(model, config)
+model.print_trainable_parameters()
+# trainable params: 6,553,600 || all params: 6,744,547,328
+
+Techniques available in PEFT:
+- LoRA (Low-Rank Adaptation)
+- QLoRA (Quantized LoRA)
+- Prefix Tuning
+- P-Tuning
+- Prompt Tuning
+- IA3
+
+QUANTIZATION
+------------
+Reduce model size and memory footprint:
+
+from transformers import BitsAndBytesConfig
+
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.float16,
+)
+model = AutoModelForCausalLM.from_pretrained(model_name, quantization_config=bnb_config)
+
+DATASETS LIBRARY
+----------------
+from datasets import load_dataset, Dataset
+dataset = load_dataset("squad")      # Load from Hub
+dataset = Dataset.from_pandas(df)    # From pandas DataFrame
+dataset = dataset.map(preprocess_fn) # Apply transformations
+dataset = dataset.filter(lambda x: len(x["text"]) > 100)
+
+ACCELERATE
+----------
+Scale training from single GPU to multi-GPU/TPU with minimal code changes.
+
+from accelerate import Accelerator
+accelerator = Accelerator()
+model, optimizer, dataloader = accelerator.prepare(model, optimizer, dataloader)
+
+USE CASES
+---------
+- Text classification, NER, summarization, translation
+- Question answering and document retrieval
+- Code generation (CodeLlama, StarCoder)
+- Image classification and object detection
+- Text-to-image generation
+- Speech recognition (Whisper)
+- Multimodal models (LLaVA, CLIP)
+
+INSTALLATION
+------------
+pip install transformers datasets accelerate peft bitsandbytes
+
+VERSION: Transformers 4.40.x (2024)
+GITHUB: https://github.com/huggingface/transformers
+DOCS: https://huggingface.co/docs/transformers
+
+================================================================================
