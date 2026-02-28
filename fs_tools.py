@@ -206,3 +206,29 @@ def search_in_file(filepath: str, keyword: str) -> dict:
             "keyword": keyword,
             "error": str(e)
         }
+
+
+def get_path_by_name(root_dir: str, name: str) -> dict:
+    """
+    Find files or directories by exact case-sensitive name under root_dir.
+    
+    Args:
+        root_dir: Root directory to search under
+        name: Exact case-sensitive name to search for
+        
+    Returns:
+        dict: {"paths": list[str], "name": str}
+              paths contains all matching full paths (empty if no matches)
+    """
+    root_path = Path(os.path.expanduser(root_dir))
+    if not root_path.exists() or not root_path.is_dir():
+        return {"paths": [], "name": name}
+    
+    matches = []
+    
+    # Walk through all files and directories under root_dir
+    for item in root_path.rglob("*"):
+        if item.name == name:
+            matches.append(str(item.resolve()))
+    
+    return {"paths": matches, "name": name}
