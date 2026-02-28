@@ -1,0 +1,162 @@
+================================================================================
+PYTORCH FRAMEWORK - TECHNICAL OVERVIEW
+================================================================================
+
+INTRODUCTION
+------------
+PyTorch is an open-source machine learning framework developed by Meta AI (formerly
+Facebook AI Research). Released in 2016, PyTorch has become the dominant framework
+for research and increasingly for production AI/ML workloads.
+
+PyTorch is built on the Torch library and provides tensor computation with GPU
+acceleration and automatic differentiation — the foundation of modern deep learning.
+
+CORE CONCEPTS
+-------------
+1. Tensors
+   - PyTorch's fundamental data structure (like NumPy arrays but GPU-capable)
+   - Supports all standard numerical operations
+   - Automatic gradient tracking via autograd engine
+
+   import torch
+   x = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
+   x = x.cuda()  # Move to GPU
+
+2. Autograd
+   - Automatic differentiation for computing gradients
+   - Dynamic computation graph (define-by-run)
+   - Enables easy custom gradient computation
+
+   x = torch.randn(3, requires_grad=True)
+   y = x ** 2
+   y.sum().backward()
+   print(x.grad)  # dy/dx = 2x
+
+3. nn.Module
+   - Base class for all neural network layers
+   - Encapsulates parameters and forward pass logic
+   - Easy model saving and loading
+
+4. DataLoader
+   - Efficient data pipeline with batching and shuffling
+   - Multi-process data loading
+   - Custom Dataset integration
+
+5. Optimizers (torch.optim)
+   - SGD, Adam, AdamW, RMSprop, etc.
+   - Learning rate schedulers
+   - Gradient clipping
+
+BUILDING A NEURAL NETWORK
+--------------------------
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+class SimpleNet(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(SimpleNet, self).__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(input_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, output_size)
+        )
+
+    def forward(self, x):
+        return self.layers(x)
+
+# Initialize
+model = SimpleNet(784, 256, 10)
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
+criterion = nn.CrossEntropyLoss()
+
+# Training loop
+for epoch in range(num_epochs):
+    for batch_X, batch_y in dataloader:
+        optimizer.zero_grad()
+        outputs = model(batch_X)
+        loss = criterion(outputs, batch_y)
+        loss.backward()
+        optimizer.step()
+
+TRAINING BEST PRACTICES
+------------------------
+- Use torch.cuda.amp for automatic mixed precision (AMP) training
+- Use torch.compile() (PyTorch 2.0+) for 30-50% speed improvements
+- Gradient accumulation for large effective batch sizes
+- Gradient checkpointing to reduce memory usage
+- DataParallel or DistributedDataParallel for multi-GPU training
+
+PYTORCH ECOSYSTEM
+-----------------
+1. TorchVision
+   - Pre-trained models: ResNet, VGG, EfficientNet, ViT
+   - Standard datasets: ImageNet, CIFAR-10, COCO
+   - Image augmentation transforms
+
+2. TorchText
+   - NLP data processing utilities
+   - Vocabulary building and tokenization
+   - Standard NLP datasets
+
+3. TorchAudio
+   - Audio processing and feature extraction
+   - Pre-trained speech models
+
+4. PyTorch Lightning
+   - High-level training framework on top of PyTorch
+   - Removes boilerplate training code
+   - Built-in logging, checkpointing, distributed training
+
+5. TorchServe
+   - Model serving and deployment
+   - REST API for model inference
+   - Multi-model serving
+
+PYTORCH 2.0 FEATURES
+----------------------
+- torch.compile(): JIT compilation via TorchDynamo + TorchInductor
+- Improved transformer primitives (SDPA)
+- Better distributed training support
+- torch.export() for deployment
+
+GPU MEMORY MANAGEMENT
+---------------------
+- torch.cuda.empty_cache() — Free unused cached memory
+- model.half() — FP16 inference for 2x memory savings
+- torch.no_grad() context manager for inference
+- Gradient checkpointing: model.gradient_checkpointing_enable()
+
+MODEL SAVING AND LOADING
+------------------------
+# Save
+torch.save(model.state_dict(), "model.pth")
+
+# Load
+model = SimpleNet(784, 256, 10)
+model.load_state_dict(torch.load("model.pth"))
+model.eval()
+
+USE CASES
+---------
+- Computer vision (classification, detection, segmentation)
+- Natural language processing and LLMs
+- Reinforcement learning
+- Generative models (GANs, Diffusion Models, VAEs)
+- Scientific computing and physics-informed ML
+- Research and rapid prototyping
+
+INSTALLATION
+------------
+pip install torch torchvision torchaudio
+# With CUDA 12.1:
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+VERSION: PyTorch 2.3.x (2024)
+GITHUB: https://github.com/pytorch/pytorch
+DOCS: https://pytorch.org/docs/
+
+================================================================================
