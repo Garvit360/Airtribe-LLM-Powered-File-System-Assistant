@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import os
 import json
 from pathlib import Path
+from typing import Callable
 from langsmith import traceable
 
 import fs_tools
@@ -121,7 +122,7 @@ def run_tool(name: str, arguments: dict) -> str:
     raise ValueError(f"Unknown tool: {name}")
 
 @traceable
-def get_response(prompt: str, history: list | None = None) -> str:
+def get_response(prompt: str, history: list | None = None, on_tool_calls: Callable[[list], None] | None = None) -> str:
     messages = (history or []) + [{"role": "user", "content": prompt}]
     while True:
         response = client.chat.completions.create(
@@ -134,6 +135,9 @@ def get_response(prompt: str, history: list | None = None) -> str:
             return msg.content
         if not msg.tool_calls:
             raise RuntimeError("Model returned no content and no tool_calls")
+        tool_names = [tc.function.name for tc in msg.tool_calls]
+        if on_tool_calls:
+            on_tool_calls(tool_names)
         messages.append({
             "role": "assistant",
             "content": msg.content,
@@ -178,8 +182,11 @@ def run_chat_ui() -> None:
             console.print("[dim]Bye.[/]")
             break
 
+        def on_tool_calls(tool_names: list) -> None:
+            console.print("[dim]  Calling: " + ", ".join(tool_names) + "[/]")
+
         with console.status("[bold green]Thinking…[/]"):
-            response = get_response(user_input, history=history)
+            response = get_response(user_input, history=history, on_tool_calls=on_tool_calls)
 
         history.append({"role": "user", "content": user_input})
         history.append({"role": "assistant", "content": response})
