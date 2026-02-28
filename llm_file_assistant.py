@@ -125,7 +125,7 @@ def get_response(prompt: str, history: list | None = None) -> str:
     messages = (history or []) + [{"role": "user", "content": prompt}]
     while True:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5.1",
             messages=messages,
             tools=tools,
         )

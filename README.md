@@ -60,11 +60,21 @@ A small system that combines **file-system tools** (read, list, write, search) w
 
    From the project root:
 
+   **Terminal chat (ChatGPT-style):**
+
+   ```bash
+   python llm_file_assistant.py --chat
+   ```
+
+   Interactive multi-turn chat: type prompts (e.g. “List files in sample_files”, “Read sample_files/notes.txt”), see responses in panels. Type `exit` or `quit` to end.
+
+   **Single prompt (no UI):**
+
    ```bash
    python llm_file_assistant.py
    ```
 
-   The default prompt lists `sample_files` and summarizes `sample_files/notes.txt`. Edit the `prompt` in `if __name__ == "__main__"` to try other queries (e.g. read a PDF, search for a keyword, write a file).
+   Runs one built-in prompt (list + summarize notes.txt). Edit the `prompt` in `if __name__ == "__main__"` to try other queries.
 
 4. **Use the file tools alone (optional)**
 
